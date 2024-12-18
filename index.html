@@ -2,60 +2,153 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MQTT Control Panel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NSPanel MQTT Control</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.2/mqtt.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 0 auto;
+        :root {
+            --bg-primary: #2c3e50;
+            --bg-secondary: #34495e;
+            --accent-color: #3498db;
+            --text-color: #ecf0f1;
+            --error-color: #e74c3c;
+            --success-color: #2ecc71;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            font-family: 'Roboto', 'Segoe UI', sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-color);
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
             padding: 20px;
-            text-align: center;
+            box-sizing: border-box;
         }
-        .control-group {
-            margin-bottom: 20px;
+
+        .panel {
+            background-color: var(--bg-secondary);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        input, button {
-            margin: 10px;
-            padding: 10px;
-            width: 80%;
+
+        .touch-button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 10px;
+            background-color: var(--accent-color);
+            color: white;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: background-color 0.2s ease;
+            touch-action: manipulation;
         }
+
+        .touch-button:active {
+            background-color: #2980b9;
+        }
+
+        .touch-input {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid var(--bg-secondary);
+            border-radius: 10px;
+            background-color: rgba(255,255,255,0.1);
+            color: var(--text-color);
+            font-size: 16px;
+        }
+
         #status {
-            margin-top: 20px;
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
             font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .status-connected {
+            background-color: rgba(46, 204, 113, 0.2);
+            color: var(--success-color);
+        }
+
+        .status-error {
+            background-color: rgba(231, 76, 60, 0.2);
+            color: var(--error-color);
+        }
+
+        .preset-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+        .preset-button {
+            flex: 1;
+            margin: 0 5px;
+            padding: 10px;
+            background-color: #2980b9;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <h1>MQTT Control Panel</h1>
-    
-    <div class="control-group">
-        <h2>MQTT Connection</h2>
-        <input type="text" id="broker" placeholder="Broker URL (e.g., ws://broker.hivemq.com:8000/mqtt)">
-        <input type="text" id="topic" placeholder="Base Topic">
-        <button onclick="connect()">Connect</button>
-    </div>
+    <div class="container">
+        <div class="panel">
+            <h2>MQTT Connection</h2>
+            <input type="text" id="broker" class="touch-input" placeholder="Broker URL (ws://)" value="ws://your-mqtt-broker:8000/mqtt">
+            <button onclick="connect()" class="touch-button">Connect</button>
+        </div>
 
-    <div class="control-group">
-        <h2>Send Message</h2>
-        <input type="text" id="messageTopic" placeholder="Topic">
-        <input type="text" id="messagePayload" placeholder="Payload">
-        <button onclick="sendMessage()">Send MQTT Message</button>
-    </div>
+        <div class="panel">
+            <h2>Send Message</h2>
+            <input type="text" id="messageTopic" class="touch-input" placeholder="MQTT Topic">
+            <input type="text" id="messagePayload" class="touch-input" placeholder="Message Payload">
+            
+            <div class="preset-buttons">
+                <div class="preset-button" onclick="sendPreset('light/living', 'ON')">Light ON</div>
+                <div class="preset-button" onclick="sendPreset('light/living', 'OFF')">Light OFF</div>
+            </div>
 
-    <div id="status">Disconnected</div>
+            <button onclick="sendMessage()" class="touch-button">Send Message</button>
+        </div>
+
+        <div id="status" class="status-connected">Disconnected</div>
+    </div>
 
     <script>
         let client = null;
 
+        function updateStatus(message, isError = false) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = isError ? 'status-error' : 'status-connected';
+        }
+
         function connect() {
             const brokerUrl = document.getElementById('broker').value;
-            const baseTopic = document.getElementById('topic').value;
-            const statusDiv = document.getElementById('status');
 
             if (!brokerUrl) {
-                alert('Please enter a broker URL');
+                updateStatus('Please enter broker URL', true);
                 return;
             }
 
@@ -63,28 +156,24 @@
                 client = mqtt.connect(brokerUrl);
 
                 client.on('connect', () => {
-                    statusDiv.textContent = 'Connected to ' + brokerUrl;
-                    statusDiv.style.color = 'green';
+                    updateStatus('Connected to ' + brokerUrl);
                 });
 
                 client.on('error', (error) => {
-                    statusDiv.textContent = 'Connection Error: ' + error;
-                    statusDiv.style.color = 'red';
+                    updateStatus('Connection Error: ' + error, true);
                 });
 
                 client.on('disconnect', () => {
-                    statusDiv.textContent = 'Disconnected';
-                    statusDiv.style.color = 'red';
+                    updateStatus('Disconnected', true);
                 });
             } catch (error) {
-                statusDiv.textContent = 'Connection Failed: ' + error;
-                statusDiv.style.color = 'red';
+                updateStatus('Connection Failed: ' + error, true);
             }
         }
 
         function sendMessage() {
             if (!client) {
-                alert('Please connect to a broker first');
+                updateStatus('Connect to broker first', true);
                 return;
             }
 
@@ -92,19 +181,51 @@
             const payload = document.getElementById('messagePayload').value;
 
             if (!topic || !payload) {
-                alert('Please enter both topic and payload');
+                updateStatus('Enter topic and payload', true);
                 return;
             }
 
             client.publish(topic, payload, (error) => {
                 if (error) {
-                    console.error('Message publish error:', error);
+                    updateStatus('Publish Error: ' + error, true);
                 } else {
-                    console.log('Message published successfully');
-                    // Optionally, you could add a visual indication of successful message send
+                    updateStatus('Message Published Successfully');
                 }
             });
         }
+
+        function sendPreset(topic, payload) {
+            if (!client) {
+                updateStatus('Connect to broker first', true);
+                return;
+            }
+
+            client.publish(topic, payload, (error) => {
+                if (error) {
+                    updateStatus('Preset Send Error: ' + error, true);
+                } else {
+                    updateStatus(`Sent ${payload} to ${topic}`);
+                }
+            });
+        }
+
+        // Fullscreen and touch prevention
+        window.onload = function() {
+            // Prevent default touch behaviors
+            document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
+            
+            // Attempt fullscreen
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.mozRequestFullScreen) {
+                elem.mozRequestFullScreen();
+            } else if (elem.webkitRequestFullscreen) {
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) {
+                elem.msRequestFullscreen();
+            }
+        };
     </script>
 </body>
 </html>
