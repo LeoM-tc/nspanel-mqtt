@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT Control Panel</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.2/mqtt.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: center;
+        }
+        .control-group {
+            margin-bottom: 20px;
+        }
+        input, button {
+            margin: 10px;
+            padding: 10px;
+            width: 80%;
+        }
+        #status {
+            margin-top: 20px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>MQTT Control Panel</h1>
+    
+    <div class="control-group">
+        <h2>MQTT Connection</h2>
+        <input type="text" id="broker" placeholder="Broker URL (e.g., ws://broker.hivemq.com:8000/mqtt)">
+        <input type="text" id="topic" placeholder="Base Topic">
+        <button onclick="connect()">Connect</button>
+    </div>
+
+    <div class="control-group">
+        <h2>Send Message</h2>
+        <input type="text" id="messageTopic" placeholder="Topic">
+        <input type="text" id="messagePayload" placeholder="Payload">
+        <button onclick="sendMessage()">Send MQTT Message</button>
+    </div>
+
+    <div id="status">Disconnected</div>
+
+    <script>
+        let client = null;
+
+        function connect() {
+            const brokerUrl = document.getElementById('broker').value;
+            const baseTopic = document.getElementById('topic').value;
+            const statusDiv = document.getElementById('status');
+
+            if (!brokerUrl) {
+                alert('Please enter a broker URL');
+                return;
+            }
+
+            try {
+                client = mqtt.connect(brokerUrl);
+
+                client.on('connect', () => {
+                    statusDiv.textContent = 'Connected to ' + brokerUrl;
+                    statusDiv.style.color = 'green';
+                });
+
+                client.on('error', (error) => {
+                    statusDiv.textContent = 'Connection Error: ' + error;
+                    statusDiv.style.color = 'red';
+                });
+
+                client.on('disconnect', () => {
+                    statusDiv.textContent = 'Disconnected';
+                    statusDiv.style.color = 'red';
+                });
+            } catch (error) {
+                statusDiv.textContent = 'Connection Failed: ' + error;
+                statusDiv.style.color = 'red';
+            }
+        }
+
+        function sendMessage() {
+            if (!client) {
+                alert('Please connect to a broker first');
+                return;
+            }
+
+            const topic = document.getElementById('messageTopic').value;
+            const payload = document.getElementById('messagePayload').value;
+
+            if (!topic || !payload) {
+                alert('Please enter both topic and payload');
+                return;
+            }
+
+            client.publish(topic, payload, (error) => {
+                if (error) {
+                    console.error('Message publish error:', error);
+                } else {
+                    console.log('Message published successfully');
+                    // Optionally, you could add a visual indication of successful message send
+                }
+            });
+        }
+    </script>
+</body>
+</html>
