@@ -2,87 +2,60 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NSPanel Pro MQTT Control</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQTT Control Panel</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.2/mqtt.min.js"></script>
     <style>
-        html, body {
-            margin: 0;
-            padding: 0;
-            height: 100%;
-            overscroll-behavior: none;
-            touch-action: manipulation;
-            background-color: #2c3e50;
-            color: white;
-            font-family: 'Roboto', Arial, sans-serif;
-        }
-        #container {
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
+        body {
+            font-family: Arial, sans-serif;
             max-width: 600px;
             margin: 0 auto;
-            padding: 15px;
+            padding: 20px;
+            text-align: center;
         }
-        .section {
-            background-color: #34495e;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 15px;
+        .control-group {
+            margin-bottom: 20px;
         }
         input, button {
-            width: 100%;
-            padding: 12px;
-            margin: 5px 0;
-            border: none;
-            border-radius: 5px;
-            background-color: #2980b9;
-            color: white;
-        }
-        button:active {
-            background-color: #3498db;
+            margin: 10px;
+            padding: 10px;
+            width: 80%;
         }
         #status {
-            text-align: center;
-            padding: 10px;
-            background-color: #2c3e50;
+            margin-top: 20px;
+            font-weight: bold;
         }
-        .error { color: #e74c3c; }
-        .success { color: #2ecc71; }
     </style>
 </head>
 <body>
-    <div id="container">
-        <div class="section">
-            <h2>MQTT Connection</h2>
-            <input type="text" id="broker" placeholder="Broker URL (ws://)" value="ws://your-mqtt-broker:8000/mqtt">
-            <button onclick="connect()">Connect</button>
-        </div>
-
-        <div class="section">
-            <h2>Send Message</h2>
-            <input type="text" id="messageTopic" placeholder="MQTT Topic">
-            <input type="text" id="messagePayload" placeholder="Message Payload">
-            <button onclick="sendMessage()">Send</button>
-        </div>
-
-        <div id="status">Disconnected</div>
+    <h1>MQTT Control Panel</h1>
+    
+    <div class="control-group">
+        <h2>MQTT Connection</h2>
+        <input type="text" id="broker" placeholder="Broker URL (e.g., ws://broker.hivemq.com:8000/mqtt)">
+        <input type="text" id="topic" placeholder="Base Topic">
+        <button onclick="connect()">Connect</button>
     </div>
+
+    <div class="control-group">
+        <h2>Send Message</h2>
+        <input type="text" id="messageTopic" placeholder="Topic">
+        <input type="text" id="messagePayload" placeholder="Payload">
+        <button onclick="sendMessage()">Send MQTT Message</button>
+    </div>
+
+    <div id="status">Disconnected</div>
 
     <script>
         let client = null;
 
-        function updateStatus(message, isError = false) {
-            const status = document.getElementById('status');
-            status.textContent = message;
-            status.className = isError ? 'error' : 'success';
-        }
-
         function connect() {
             const brokerUrl = document.getElementById('broker').value;
+            const baseTopic = document.getElementById('topic').value;
+            const statusDiv = document.getElementById('status');
 
             if (!brokerUrl) {
-                updateStatus('Please enter broker URL', true);
+                alert('Please enter a broker URL');
                 return;
             }
 
@@ -90,24 +63,28 @@
                 client = mqtt.connect(brokerUrl);
 
                 client.on('connect', () => {
-                    updateStatus('Connected to ' + brokerUrl);
+                    statusDiv.textContent = 'Connected to ' + brokerUrl;
+                    statusDiv.style.color = 'green';
                 });
 
                 client.on('error', (error) => {
-                    updateStatus('Connection Error: ' + error, true);
+                    statusDiv.textContent = 'Connection Error: ' + error;
+                    statusDiv.style.color = 'red';
                 });
 
                 client.on('disconnect', () => {
-                    updateStatus('Disconnected', true);
+                    statusDiv.textContent = 'Disconnected';
+                    statusDiv.style.color = 'red';
                 });
             } catch (error) {
-                updateStatus('Connection Failed: ' + error, true);
+                statusDiv.textContent = 'Connection Failed: ' + error;
+                statusDiv.style.color = 'red';
             }
         }
 
         function sendMessage() {
             if (!client) {
-                updateStatus('Connect to broker first', true);
+                alert('Please connect to a broker first');
                 return;
             }
 
@@ -115,23 +92,19 @@
             const payload = document.getElementById('messagePayload').value;
 
             if (!topic || !payload) {
-                updateStatus('Enter topic and payload', true);
+                alert('Please enter both topic and payload');
                 return;
             }
 
             client.publish(topic, payload, (error) => {
                 if (error) {
-                    updateStatus('Publish Error: ' + error, true);
+                    console.error('Message publish error:', error);
                 } else {
-                    updateStatus('Message Published Successfully');
+                    console.log('Message published successfully');
+                    // Optionally, you could add a visual indication of successful message send
                 }
             });
         }
-
-        // Prevent zooming and scrolling
-        document.addEventListener('touchmove', function(e) {
-            e.preventDefault();
-        }, { passive: false });
     </script>
 </body>
 </html>
