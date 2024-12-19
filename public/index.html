@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Light Control Panel</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+        }
+
+        .button-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            width: 80%;
+            max-width: 400px;
+        }
+
+        .control-button {
+            padding: 30px;
+            font-size: 24px;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: transform 0.1s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .control-button:active {
+            transform: scale(0.98);
+        }
+
+        #onButton {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        #offButton {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .status {
+            margin: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="status" id="status"></div>
+    <div class="button-container">
+        <button class="control-button" id="onButton">Turn ON</button>
+        <button class="control-button" id="offButton">Turn OFF</button>
+    </div>
+
+    <script>
+        const statusDiv = document.getElementById('status');
+
+        async function sendCommand(state) {
+            try {
+                statusDiv.textContent = 'Sending command...';
+                const response = await fetch('/api/publish', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ state })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    statusDiv.textContent = `Successfully sent: ${state}`;
+                } else {
+                    throw new Error(data.error);
+                }
+            } catch (error) {
+                statusDiv.textContent = `Error: ${error.message}`;
+            }
+        }
+
+        document.getElementById('onButton').addEventListener('click', () => sendCommand('ON'));
+        document.getElementById('offButton').addEventListener('click', () => sendCommand('OFF'));
+    </script>
+</body>
+</html>
