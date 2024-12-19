@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Light Control</title>
+    <title>Zigbee Light Control</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <style>
         body {
@@ -14,15 +14,15 @@
             align-items: center;
             justify-content: center;
             min-height: 100vh;
-            background: #f0f0f0;
+            background: #1a1a1a;
             font-family: Arial, sans-serif;
             touch-action: manipulation;
+            color: white;
         }
 
         .status {
             margin-bottom: 20px;
             font-size: 1.2em;
-            color: #666;
         }
 
         .button {
@@ -30,11 +30,12 @@
             height: 200px;
             border-radius: 50%;
             border: none;
-            background: #ddd;
+            background: #333;
+            color: white;
             font-size: 24px;
             cursor: pointer;
             touch-action: manipulation;
-            transition: background-color 0.3s;
+            transition: all 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -43,7 +44,8 @@
 
         .button.on {
             background: #ffeb3b;
-            box-shadow: 0 0 20px rgba(255, 235, 59, 0.5);
+            color: black;
+            box-shadow: 0 0 30px rgba(255, 235, 59, 0.5);
         }
 
         .connection-status {
@@ -64,28 +66,40 @@
             background: #f44336;
             color: white;
         }
+
+        .device-select {
+            margin-bottom: 20px;
+            padding: 10px;
+            font-size: 16px;
+            background: #333;
+            color: white;
+            border: 1px solid #666;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
     <div id="connectionStatus" class="connection-status disconnected">Disconnected</div>
+    <select id="deviceSelect" class="device-select">
+        <option value="zigbee2mqtt/YOUR_DEVICE_NAME">Select Light</option>
+    </select>
     <div class="status">Light is: <span id="lightStatus">OFF</span></div>
     <button id="toggleButton" class="button">
         Toggle Light
     </button>
 
     <script>
-        // MQTT Configuration
+        // MQTT Configuration for Zigbee2MQTT
         const mqttConfig = {
-            host: 'your-mqtt-broker.com',  // Change this to your MQTT broker
-            port: 8884,                    // Change this to your MQTT port
-            topic: 'light/control',        // Change this to your MQTT topic
-            username: 'your-username',     // Change this if needed
-            password: 'your-password'      // Change this if needed
+            host: '10.2.17.32',
+            port: 8080,
+            topic: 'zigbee2mqtt/', // Base topic
         };
 
         let client;
         let isConnected = false;
         let lightState = false;
+        let currentTopic = '';
 
         function updateUI() {
             const button = document.getElementById('toggleButton');
@@ -109,31 +123,33 @@
             };
 
             client.onMessageArrived = (message) => {
-                if (message.destinationName === mqttConfig.topic) {
-                    lightState = message.payloadString === 'ON';
-                    updateUI();
+                try {
+                    const payload = JSON.parse(message.payloadString);
+                    if (payload.state) {
+                        lightState = payload.state.toLowerCase() === 'on';
+                        updateUI();
+                    }
+                } catch (e) {
+                    console.error('Error parsing message:', e);
                 }
             };
 
             const connectOptions = {
-                useSSL: true,
+                useSSL: false, // Changed to false for local network
                 timeout: 3,
                 onSuccess: () => {
                     isConnected = true;
                     updateUI();
-                    client.subscribe(mqttConfig.topic);
+                    // Subscribe to all device states
+                    client.subscribe(mqttConfig.topic + '#');
                 },
-                onFailure: () => {
+                onFailure: (error) => {
+                    console.error('Connection failed:', error);
                     isConnected = false;
                     updateUI();
                     setTimeout(connect, 2000);
                 }
             };
-
-            if (mqttConfig.username) {
-                connectOptions.userName = mqttConfig.username;
-                connectOptions.password = mqttConfig.password;
-            }
 
             try {
                 client.connect(connectOptions);
@@ -143,14 +159,19 @@
             }
         }
 
+        document.getElementById('deviceSelect').addEventListener('change', (e) => {
+            currentTopic = e.target.value;
+        });
+
         document.getElementById('toggleButton').addEventListener('click', () => {
-            if (!isConnected) return;
+            if (!isConnected || !currentTopic) return;
 
             lightState = !lightState;
-            const message = new Paho.MQTT.Message(lightState ? 'ON' : 'OFF');
-            message.destinationName = mqttConfig.topic;
+            const message = new Paho.MQTT.Message(JSON.stringify({
+                state: lightState ? 'ON' : 'OFF'
+            }));
+            message.destinationName = currentTopic + '/set';
             client.send(message);
-            updateUI();
         });
 
         // Prevent double-tap zoom on iOS
@@ -158,6 +179,15 @@
 
         // Initial connection
         connect();
+
+        // Request available devices from Zigbee2MQTT
+        function updateDeviceList() {
+            if (isConnected) {
+                const message = new Paho.MQTT.Message('');
+                message.destinationName = mqttConfig.topic + 'bridge/devices';
+                client.send(message);
+            }
+        }
     </script>
 </body>
 </html>
