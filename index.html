@@ -2,109 +2,162 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MQTT Control Panel</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mqtt/5.3.2/mqtt.min.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Light Control</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 0 auto;
+            margin: 0;
             padding: 20px;
-            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+            touch-action: manipulation;
         }
-        .control-group {
+
+        .status {
             margin-bottom: 20px;
+            font-size: 1.2em;
+            color: #666;
         }
-        input, button {
-            margin: 10px;
-            padding: 10px;
-            width: 80%;
+
+        .button {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: none;
+            background: #ddd;
+            font-size: 24px;
+            cursor: pointer;
+            touch-action: manipulation;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
         }
-        #status {
-            margin-top: 20px;
-            font-weight: bold;
+
+        .button.on {
+            background: #ffeb3b;
+            box-shadow: 0 0 20px rgba(255, 235, 59, 0.5);
+        }
+
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+
+        .connected {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .disconnected {
+            background: #f44336;
+            color: white;
         }
     </style>
 </head>
 <body>
-    <h1>MQTT Control Panel</h1>
-    
-    <div class="control-group">
-        <h2>MQTT Connection</h2>
-        <input type="text" id="broker" placeholder="Broker URL (e.g., ws://broker.hivemq.com:8000/mqtt)">
-        <input type="text" id="topic" placeholder="Base Topic">
-        <button onclick="connect()">Connect</button>
-    </div>
-
-    <div class="control-group">
-        <h2>Send Message</h2>
-        <input type="text" id="messageTopic" placeholder="Topic">
-        <input type="text" id="messagePayload" placeholder="Payload">
-        <button onclick="sendMessage()">Send MQTT Message</button>
-    </div>
-
-    <div id="status">Disconnected</div>
+    <div id="connectionStatus" class="connection-status disconnected">Disconnected</div>
+    <div class="status">Light is: <span id="lightStatus">OFF</span></div>
+    <button id="toggleButton" class="button">
+        Toggle Light
+    </button>
 
     <script>
-        let client = null;
+        // MQTT Configuration
+        const mqttConfig = {
+            host: 'your-mqtt-broker.com',  // Change this to your MQTT broker
+            port: 8884,                    // Change this to your MQTT port
+            topic: 'light/control',        // Change this to your MQTT topic
+            username: 'your-username',     // Change this if needed
+            password: 'your-password'      // Change this if needed
+        };
+
+        let client;
+        let isConnected = false;
+        let lightState = false;
+
+        function updateUI() {
+            const button = document.getElementById('toggleButton');
+            const status = document.getElementById('lightStatus');
+            const connectionStatus = document.getElementById('connectionStatus');
+
+            button.classList.toggle('on', lightState);
+            status.textContent = lightState ? 'ON' : 'OFF';
+            connectionStatus.className = `connection-status ${isConnected ? 'connected' : 'disconnected'}`;
+            connectionStatus.textContent = isConnected ? 'Connected' : 'Disconnected';
+        }
 
         function connect() {
-            const brokerUrl = document.getElementById('broker').value;
-            const baseTopic = document.getElementById('topic').value;
-            const statusDiv = document.getElementById('status');
+            const clientId = 'webClient_' + Math.random().toString(16).substr(2, 8);
+            client = new Paho.MQTT.Client(mqttConfig.host, mqttConfig.port, clientId);
 
-            if (!brokerUrl) {
-                alert('Please enter a broker URL');
-                return;
+            client.onConnectionLost = () => {
+                isConnected = false;
+                updateUI();
+                setTimeout(connect, 2000);
+            };
+
+            client.onMessageArrived = (message) => {
+                if (message.destinationName === mqttConfig.topic) {
+                    lightState = message.payloadString === 'ON';
+                    updateUI();
+                }
+            };
+
+            const connectOptions = {
+                useSSL: true,
+                timeout: 3,
+                onSuccess: () => {
+                    isConnected = true;
+                    updateUI();
+                    client.subscribe(mqttConfig.topic);
+                },
+                onFailure: () => {
+                    isConnected = false;
+                    updateUI();
+                    setTimeout(connect, 2000);
+                }
+            };
+
+            if (mqttConfig.username) {
+                connectOptions.userName = mqttConfig.username;
+                connectOptions.password = mqttConfig.password;
             }
 
             try {
-                client = mqtt.connect(brokerUrl);
-
-                client.on('connect', () => {
-                    statusDiv.textContent = 'Connected to ' + brokerUrl;
-                    statusDiv.style.color = 'green';
-                });
-
-                client.on('error', (error) => {
-                    statusDiv.textContent = 'Connection Error: ' + error;
-                    statusDiv.style.color = 'red';
-                });
-
-                client.on('disconnect', () => {
-                    statusDiv.textContent = 'Disconnected';
-                    statusDiv.style.color = 'red';
-                });
+                client.connect(connectOptions);
             } catch (error) {
-                statusDiv.textContent = 'Connection Failed: ' + error;
-                statusDiv.style.color = 'red';
+                console.error('Connection error:', error);
+                setTimeout(connect, 2000);
             }
         }
 
-        function sendMessage() {
-            if (!client) {
-                alert('Please connect to a broker first');
-                return;
-            }
+        document.getElementById('toggleButton').addEventListener('click', () => {
+            if (!isConnected) return;
 
-            const topic = document.getElementById('messageTopic').value;
-            const payload = document.getElementById('messagePayload').value;
+            lightState = !lightState;
+            const message = new Paho.MQTT.Message(lightState ? 'ON' : 'OFF');
+            message.destinationName = mqttConfig.topic;
+            client.send(message);
+            updateUI();
+        });
 
-            if (!topic || !payload) {
-                alert('Please enter both topic and payload');
-                return;
-            }
+        // Prevent double-tap zoom on iOS
+        document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
 
-            client.publish(topic, payload, (error) => {
-                if (error) {
-                    console.error('Message publish error:', error);
-                } else {
-                    console.log('Message published successfully');
-                    // Optionally, you could add a visual indication of successful message send
-                }
-            });
-        }
+        // Initial connection
+        connect();
     </script>
 </body>
 </html>
