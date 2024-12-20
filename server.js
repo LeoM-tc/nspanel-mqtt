@@ -7,17 +7,21 @@ const path = require('path');
 app.use(express.static('public'));
 app.use(express.json());
 
-// Connect to MQTT broker
-const client = mqtt.connect('mqtt://10.2.17.32:1883');
+// Connect to MQTT broker with new address
+const client = mqtt.connect('mqtt://10.2.7.30:1883');
 
 client.on('connect', () => {
     console.log('Connected to MQTT broker');
 });
 
-// API endpoint to publish messages
+// API endpoint to publish messages with updated topic and payload structure
 app.post('/api/publish', (req, res) => {
-    const { state } = req.body;
-    client.publish('zigbee2mqtt/nspanel', JSON.stringify({ state }), (err) => {
+    const { state, brightness } = req.body;
+    const payload = brightness !== undefined ? 
+        { state, brightness: parseInt(brightness) } : 
+        { state };
+        
+    client.publish('zigbee2mqtt/Z2Dali/set', JSON.stringify(payload), (err) => {
         if (err) {
             res.status(500).json({ error: 'Failed to publish message' });
         } else {
@@ -26,6 +30,6 @@ app.post('/api/publish', (req, res) => {
     });
 });
 
-app.listen(3000, () => {
-    console.log('Server running on port 3000');
+app.listen(3000, '0.0.0.0', () => {
+    console.log('Server running on http://0.0.0.0:3000');
 });
