@@ -7,113 +7,119 @@
     <style>
         body {
             margin: 0;
-            padding: 20px;
+            padding: 16px;
             font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-height: 100vh;
-            background-color: #f0f0f0;
+            justify-content: space-between;
+            height: 100vh;
+            background-color: #000000;
+            color: #fff;
+            background-image: url('background.png');
+        }
+
+        .status {
+            margin: 16px 0;
+            padding: 8px 16px;
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.1);
+            text-align: center;
+            font-size: 14px;
+            width: 90%;
         }
 
         .button-container {
             display: flex;
             flex-direction: column;
-            gap: 20px;
-            width: 80%;
-            max-width: 400px;
+            gap: 16px;
+            width: 90%;
+            margin: 16px 0;
         }
 
         .control-button {
-            padding: 30px;
-            font-size: 24px;
+            padding: 24px;
+            font-size: 20px;
             border: none;
-            border-radius: 15px;
+            border-radius: 12px;
             cursor: pointer;
-            transition: transform 0.1s;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.1s, opacity 0.2s;
+            touch-action: manipulation;
         }
 
         .control-button:active {
             transform: scale(0.98);
+            opacity: 0.8;
         }
 
         #onButton {
-            background-color: #4CAF50;
+            background-color: #1280c5;
             color: white;
         }
 
         #offButton {
-            background-color: #f44336;
+            background-color: #b53930;
             color: white;
         }
 
-        .status {
-            margin: 20px;
-            padding: 10px;
-            border-radius: 8px;
-            background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-
         .slider-container {
-            width: 80%;
-            max-width: 400px;
-            margin: 20px 0;
-            padding: 20px;
-            background-color: white;
-            border-radius: 15px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 90%;
+            margin: 16px 0;
+            padding: 16px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
         }
 
         .slider-label {
             display: block;
-            margin-bottom: 10px;
-            font-size: 18px;
+            margin-bottom: 8px;
+            font-size: 16px;
             text-align: center;
         }
 
         .brightness-value {
             text-align: center;
-            margin-top: 10px;
-            font-size: 16px;
+            margin-top: 8px;
+            font-size: 14px;
+            color: #fff;
         }
 
         input[type="range"] {
             width: 100%;
-            height: 25px;
+            height: 40px;
             -webkit-appearance: none;
             background: transparent;
+            touch-action: manipulation;
         }
 
         input[type="range"]::-webkit-slider-runnable-track {
             width: 100%;
-            height: 10px;
-            background: #ddd;
-            border-radius: 5px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
         }
 
         input[type="range"]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            height: 24px;
-            width: 24px;
-            background: #4CAF50;
+            height: 28px;
+            width: 28px;
+            background: #1280c5;
             border-radius: 50%;
-            margin-top: -7px;
+            margin-top: -10px;
             cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
     </style>
 </head>
 <body>
     <div class="status" id="status"></div>
     <div class="button-container">
-        <button class="control-button" id="onButton">Turn ON</button>
-        <button class="control-button" id="offButton">Turn OFF</button>
+        <button class="control-button" id="onButton">ON</button>
+        <button class="control-button" id="offButton">OFF</button>
     </div>
     <div class="slider-container">
-        <label class="slider-label" for="brightnessSlider">Brightness</label>
         <input type="range" id="brightnessSlider" min="0" max="100" value="100">
+        <label class="slider-label" for="brightnessSlider">Luminosité</label>
         <div class="brightness-value" id="brightnessValue">100%</div>
     </div>
 
@@ -156,10 +162,8 @@
             const value = e.target.value;
             brightnessValue.textContent = `${value}%`;
             
-            // Clear any existing timeout
             clearTimeout(sliderTimeout);
             
-            // Set new timeout to send command after user stops sliding for 200ms
             sliderTimeout = setTimeout(() => {
                 sendCommand('ON', parseInt(value));
             }, 200);
